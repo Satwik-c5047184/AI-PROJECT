@@ -2,11 +2,14 @@
 ate.py  —  Aspect Term Extraction: DistilBERT token classifier (BIO tagging)
 """
 
+import os
 import torch
 from transformers import DistilBertForTokenClassification
 from torch.optim import AdamW
 from tqdm import tqdm
-from data import MODEL_NAME, NUM_EPOCHS
+from data import MODEL_NAME, NUM_EPOCHS, tokenizer
+
+ATE_SAVE_DIR = "models/ate"
 
 DEVICE         = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_BIO_LABELS = 3   # 0=O, 1=B-ASP, 2=I-ASP
@@ -71,6 +74,9 @@ def train_ate(loaders, num_epochs=NUM_EPOCHS, lr=2e-5):
     ).to(DEVICE)
     optimizer = AdamW(model.parameters(), lr=lr)
     history   = []
+    best_val_f1 = -1.0
+
+    os.makedirs(ATE_SAVE_DIR, exist_ok=True)
 
     for epoch in range(1, num_epochs + 1):
         model.train()
@@ -93,8 +99,16 @@ def train_ate(loaders, num_epochs=NUM_EPOCHS, lr=2e-5):
             "val_recall":    val_r,
             "val_f1":        val_f1,
         })
+
+        saved = ""
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            model.save_pretrained(ATE_SAVE_DIR)
+            tokenizer.save_pretrained(ATE_SAVE_DIR)
+            saved = "  [saved]"
+
         print(f"  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}  "
-              f"val_P={val_p:.4f}  val_R={val_r:.4f}  val_F1={val_f1:.4f}")
+              f"val_P={val_p:.4f}  val_R={val_r:.4f}  val_F1={val_f1:.4f}{saved}")
 
     return model, history
 
