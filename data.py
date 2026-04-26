@@ -15,7 +15,7 @@ from torch.utils.data import Dataset, DataLoader
 MODEL_NAME  = "distilbert-base-uncased"
 MAX_LEN     = 128
 BATCH_SIZE  = 16
-NUM_EPOCHS  = 3
+NUM_EPOCHS  = 10
 GRAPHS_DIR  = "graphs"
 
 POLARITY2ID = {"negative": 0, "neutral": 1, "positive": 2}

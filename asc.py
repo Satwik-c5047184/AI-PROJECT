@@ -4,12 +4,15 @@ asc.py  —  Aspect Sentiment Classification: DistilBERT sequence classifier
            Output: negative (0) / neutral (1) / positive (2)
 """
 
+import os
 import torch
 from transformers import DistilBertForSequenceClassification
 from torch.optim import AdamW
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 from tqdm import tqdm
-from data import MODEL_NAME, NUM_EPOCHS
+from data import MODEL_NAME, NUM_EPOCHS, tokenizer
+
+ASC_SAVE_DIR = "models/asc"
 
 DEVICE               = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_SENTIMENT_LABELS = 3   # negative, neutral, positive
@@ -40,6 +43,9 @@ def train_asc(loaders, num_epochs=NUM_EPOCHS, lr=2e-5):
     ).to(DEVICE)
     optimizer = AdamW(model.parameters(), lr=lr)
     history   = []
+    best_val_f1 = -1.0
+
+    os.makedirs(ASC_SAVE_DIR, exist_ok=True)
 
     for epoch in range(1, num_epochs + 1):
         model.train()
@@ -61,8 +67,16 @@ def train_asc(loaders, num_epochs=NUM_EPOCHS, lr=2e-5):
             "val_accuracy": val_acc,
             "val_macro_f1": val_f1,
         })
+
+        saved = ""
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            model.save_pretrained(ASC_SAVE_DIR)
+            tokenizer.save_pretrained(ASC_SAVE_DIR)
+            saved = "  [saved]"
+
         print(f"  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}  "
-              f"val_acc={val_acc:.4f}  val_macro_f1={val_f1:.4f}")
+              f"val_acc={val_acc:.4f}  val_macro_f1={val_f1:.4f}{saved}")
 
     return model, history
 
